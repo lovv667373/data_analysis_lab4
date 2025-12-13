@@ -10,3 +10,7 @@ import os
 from datetime import datetime
 
 warnings.filterwarnings('ignore')
+
+# Настройка стилей
+plt.style.use('seaborn-v0_8-darkgrid')
+sns.set_palette("husl")
