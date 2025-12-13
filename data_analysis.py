@@ -450,3 +450,19 @@ class SpotifyDataAnalyzer:
                 print(f"⚠️ Ошибка при тестировании гипотезы 3: {e}")
         else:
             print("⚠️ Отсутствует колонка popularity для гипотезы 3")
+
+    def interpret_correlation_strength(self, r):
+        """Интерпретация силы корреляции"""
+        abs_r = abs(r)
+        if abs_r >= 0.9:
+            strength = "ОЧЕНЬ СИЛЬНАЯ"
+        elif abs_r >= 0.7:
+            strength = "СИЛЬНАЯ"
+        elif abs_r >= 0.5:
+            strength = "УМЕРЕННАЯ"
+        elif abs_r >= 0.3:
+            strength = "СЛАБАЯ"
+        else:
+            strength = "ОЧЕНЬ СЛАБАЯ"
+        
+        print(f"💪 Сила корреляции: {strength} (|r| = {abs_r:.3f})")
