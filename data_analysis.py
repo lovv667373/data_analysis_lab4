@@ -104,3 +104,119 @@ class SpotifyDataAnalyzer:
         self.data = pd.DataFrame(data)
         print(f"✅ Создан демонстрационный датасет: {len(self.data):,} записей")
         return True
+    
+    def show_dataset_info(self):
+        """Показать информацию о датасете"""
+        print("\n📊 ИНФОРМАЦИЯ О ДАТАСЕТЕ:")
+        print(f"• Записей: {len(self.data):,}")
+        print(f"• Колонок: {len(self.data.columns)}")
+        print(f"• Колонки: {', '.join(self.data.columns[:10])}{'...' if len(self.data.columns) > 10 else ''}")
+        
+        print("\n🔢 ОСНОВНЫЕ СТАТИСТИКИ:")
+        
+        # Выбираем только числовые колонки для статистики
+        numeric_cols = self.data.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) > 0:
+            stats_df = self.data[numeric_cols].describe()
+            print(stats_df)
+
+    def prepare_data(self):
+        """Подготовка данных"""
+        print("\n" + "=" * 70)
+        print("🔧 ПОДГОТОВКА ДАННЫХ ДЛЯ АНАЛИЗА")
+        print("=" * 70)
+        
+        # 1. Проверка пропущенных значений
+        print("\n1. АНАЛИЗ ПРОПУЩЕННЫХ ЗНАЧЕНИЙ:")
+        missing = self.data.isnull().sum()
+        missing = missing[missing > 0]
+        
+        if len(missing) > 0:
+            print(f"Найдено пропусков: {len(missing)} колонок")
+            for col, count in missing.items():
+                percent = (count / len(self.data)) * 100
+                print(f"  • {col}: {count} ({percent:.1f}%)")
+            
+            # Заполняем пропуски
+            numeric_cols = self.data.select_dtypes(include=[np.number]).columns
+            for col in numeric_cols:
+                if col in missing:
+                    self.data[col] = self.data[col].fillna(self.data[col].median())
+            
+            categorical_cols = self.data.select_dtypes(include=['object']).columns
+            for col in categorical_cols:
+                if col in missing:
+                    self.data[col] = self.data[col].fillna('Unknown')
+            
+            print("✅ Пропущенные значения обработаны")
+        else:
+            print("✅ Пропущенных значений нет")
+        
+        # 2. Создание новых признаков
+        print("\n2. СОЗДАНИЕ НОВЫХ ПРИЗНАКОВ:")
+        
+        # Проверяем наличие необходимых колонок
+        created_features = []
+        
+        # Создаем длительность в минутах
+        if 'duration_ms' in self.data.columns:
+            self.data['duration_min'] = self.data['duration_ms'] / 60000
+            created_features.append('duration_min')
+            print(f"  ✓ Создано: duration_min (длительность в минутах)")
+        
+        # Создаем категорию популярности
+        if 'popularity' in self.data.columns:
+            try:
+                # Используем qcut только если есть достаточно уникальных значений
+                unique_vals = self.data['popularity'].nunique()
+                if unique_vals >= 3:
+                    self.data['popularity_category'] = pd.qcut(
+                        self.data['popularity'],
+                        q=3,
+                        labels=['Низкая', 'Средняя', 'Высокая']
+                    )
+                    created_features.append('popularity_category')
+                    print(f"  ✓ Создано: popularity_category (3 категории)")
+                else:
+                    # Альтернатива: использовать cut
+                    self.data['popularity_category'] = pd.cut(
+                        self.data['popularity'],
+                        bins=3,
+                        labels=['Низкая', 'Средняя', 'Высокая']
+                    )
+                    created_features.append('popularity_category')
+                    print(f"  ✓ Создано: popularity_category (3 интервала)")
+            except Exception as e:
+                print(f"  ⚠️ Не удалось создать popularity_category: {e}")
+        
+        # Создаем категорию танцевальности
+        if 'danceability' in self.data.columns:
+            try:
+                self.data['danceability_category'] = pd.cut(
+                    self.data['danceability'],
+                    bins=[0, 0.4, 0.7, 1],
+                    labels=['Низкая', 'Средняя', 'Высокая']
+                )
+                created_features.append('danceability_category')
+                print(f"  ✓ Создано: danceability_category")
+            except Exception as e:
+                print(f"  ⚠️ Не удалось создать danceability_category: {e}")
+        
+        # Создаем категорию энергичности
+        if 'energy' in self.data.columns:
+            conditions = [
+                (self.data['energy'] < 0.3),
+                (self.data['energy'] >= 0.3) & (self.data['energy'] < 0.7),
+                (self.data['energy'] >= 0.7)
+            ]
+            choices = ['Низкая', 'Средняя', 'Высокая']
+            self.data['energy_category'] = np.select(conditions, choices, default='Средняя')
+            created_features.append('energy_category')
+            print(f"  ✓ Создано: energy_category")
+        
+        print(f"\n✅ Создано признаков: {len(created_features)}")
+        if created_features:
+            print(f"Новые признаки: {', '.join(created_features)}")
+        
+        print("\n🎯 ДАННЫЕ ГОТОВЫ К АНАЛИЗУ")
+    
