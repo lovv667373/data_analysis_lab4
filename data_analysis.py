@@ -220,3 +220,110 @@ class SpotifyDataAnalyzer:
         
         print("\n🎯 ДАННЫЕ ГОТОВЫ К АНАЛИЗУ")
     
+    def visualize_data(self):
+        """Визуализация данных"""
+        print("\n" + "=" * 70)
+        print("📊 ВИЗУАЛИЗАЦИЯ ДАННЫХ С ПОМОЩЬЮ MATPLOTLIB")
+        print("=" * 70)
+        
+        # Создаем несколько графиков
+        fig, axes = plt.subplots(2, 3, figsize=(16, 10))
+        fig.suptitle('АНАЛИЗ МУЗЫКАЛЬНЫХ ДАННЫХ SPOTIFY - ЛАБОРАТОРНАЯ РАБОТА', 
+                    fontsize=16, fontweight='bold')
+        
+        try:
+            # 1. Распределение популярности
+            if 'popularity' in self.data.columns:
+                axes[0, 0].hist(self.data['popularity'], bins=30, 
+                               edgecolor='black', alpha=0.7, color='skyblue')
+                axes[0, 0].set_title('Распределение популярности треков', fontsize=12)
+                axes[0, 0].set_xlabel('Популярность (0-100)')
+                axes[0, 0].set_ylabel('Количество треков')
+                axes[0, 0].axvline(self.data['popularity'].mean(), color='red', 
+                                 linestyle='--', linewidth=2,
+                                 label=f'Среднее: {self.data["popularity"].mean():.1f}')
+                axes[0, 0].legend()
+                axes[0, 0].grid(True, alpha=0.3)
+            
+            # 2. Распределение танцевальности
+            if 'danceability' in self.data.columns:
+                axes[0, 1].hist(self.data['danceability'], bins=30,
+                               edgecolor='black', alpha=0.7, color='lightgreen')
+                axes[0, 1].set_title('Распределение танцевальности', fontsize=12)
+                axes[0, 1].set_xlabel('Танцевальность (0-1)')
+                axes[0, 1].set_ylabel('Количество')
+                axes[0, 1].grid(True, alpha=0.3)
+            
+            # 3. Популярность по жанрам
+            if 'genre' in self.data.columns and 'popularity' in self.data.columns:
+                genre_pop = self.data.groupby('genre')['popularity'].mean().sort_values(ascending=False)
+                colors = plt.cm.Set3(np.linspace(0, 1, len(genre_pop)))
+                genre_pop.plot(kind='bar', ax=axes[0, 2], color=colors, edgecolor='black')
+                axes[0, 2].set_title('Средняя популярность по жанрам', fontsize=12)
+                axes[0, 2].set_xlabel('Жанр')
+                axes[0, 2].set_ylabel('Средняя популярность')
+                axes[0, 2].tick_params(axis='x', rotation=45)
+                axes[0, 2].grid(True, alpha=0.3)
+            
+            # 4. Корреляция: танцевальность vs энергичность
+            if all(col in self.data.columns for col in ['danceability', 'energy']):
+                scatter = axes[1, 0].scatter(self.data['danceability'], 
+                                           self.data['energy'], 
+                                           alpha=0.5, s=20,
+                                           c=self.data.get('popularity', 50),
+                                           cmap='viridis')
+                axes[1, 0].set_title('Танцевальность vs Энергичность', fontsize=12)
+                axes[1, 0].set_xlabel('Танцевальность')
+                axes[1, 0].set_ylabel('Энергичность')
+                
+                # Добавляем линию регрессии
+                if len(self.data) > 1:
+                    z = np.polyfit(self.data['danceability'], self.data['energy'], 1)
+                    p = np.poly1d(z)
+                    axes[1, 0].plot(self.data['danceability'], p(self.data['danceability']),
+                                   "r--", alpha=0.8, linewidth=2,
+                                   label=f'Линия регрессии')
+                    axes[1, 0].legend()
+                
+                if 'popularity' in self.data.columns:
+                    plt.colorbar(scatter, ax=axes[1, 0], label='Популярность')
+                axes[1, 0].grid(True, alpha=0.3)
+            
+            # 5. Boxplot танцевальности по жанрам
+            if 'genre' in self.data.columns and 'danceability' in self.data.columns:
+                # Берем топ-5 жанров
+                top_genres = self.data['genre'].value_counts().head(5).index
+                genre_data = [self.data[self.data['genre'] == g]['danceability'] 
+                            for g in top_genres]
+                
+                box = axes[1, 1].boxplot(genre_data, labels=top_genres, patch_artist=True)
+                colors = plt.cm.Pastel1(np.linspace(0, 1, len(top_genres)))
+                for patch, color in zip(box['boxes'], colors):
+                    patch.set_facecolor(color)
+                
+                axes[1, 1].set_title('Танцевальность по жанрам', fontsize=12)
+                axes[1, 1].set_xlabel('Жанр')
+                axes[1, 1].set_ylabel('Танцевальность')
+                axes[1, 1].tick_params(axis='x', rotation=45)
+                axes[1, 1].grid(True, alpha=0.3)
+            
+            # 6. Распределение темпа
+            if 'tempo' in self.data.columns:
+                axes[1, 2].hist(self.data['tempo'], bins=30,
+                               edgecolor='black', alpha=0.7, color='orange')
+                axes[1, 2].set_title('Распределение темпа (BPM)', fontsize=12)
+                axes[1, 2].set_xlabel('Темп (ударов в минуту)')
+                axes[1, 2].set_ylabel('Количество')
+                axes[1, 2].grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            
+            # Сохраняем график
+            output_path = f'{self.results_dir}/spotify_analysis.png'
+            plt.savefig(output_path, dpi=150, bbox_inches='tight')
+            print(f"✅ Графики сохранены: {output_path}")
+            plt.show()
+            
+        except Exception as e:
+            print(f"⚠️ Ошибка при создании графиков: {e}")
+            plt.close()
