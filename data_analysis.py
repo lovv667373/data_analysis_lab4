@@ -14,3 +14,6 @@ warnings.filterwarnings('ignore')
 # Настройка стилей
 plt.style.use('seaborn-v0_8-darkgrid')
 sns.set_palette("husl")
+
+class SpotifyDataAnalyzer:
+    """Анализатор данных Spotify для лабораторной работы"""
