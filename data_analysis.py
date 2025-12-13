@@ -86,3 +86,21 @@ class SpotifyDataAnalyzer:
             print("Создаю демонстрационный датасет...")
             return self.create_sample_data()
     
+    def create_sample_data(self):
+        """Создание демонстрационных данных"""
+        np.random.seed(42)
+        n_samples = 2000
+        
+        data = {
+            'popularity': np.random.randint(10, 100, n_samples),
+            'danceability': np.random.uniform(0.2, 0.95, n_samples),
+            'energy': np.random.uniform(0.3, 0.98, n_samples),
+            'valence': np.random.uniform(0.1, 0.9, n_samples),
+            'tempo': np.random.uniform(60, 180, n_samples),
+            'genre': np.random.choice(['pop', 'rock', 'hip-hop', 'edm', 'jazz'], n_samples),
+            'duration_ms': np.random.randint(120000, 360000, n_samples)
+        }
+        
+        self.data = pd.DataFrame(data)
+        print(f"✅ Создан демонстрационный датасет: {len(self.data):,} записей")
+        return True
