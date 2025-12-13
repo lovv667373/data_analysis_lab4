@@ -8,3 +8,5 @@ from scipy import stats
 import warnings
 import os
 from datetime import datetime
+
+warnings.filterwarnings('ignore')
