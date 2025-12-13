@@ -466,3 +466,137 @@ class SpotifyDataAnalyzer:
             strength = "ОЧЕНЬ СЛАБАЯ"
         
         print(f"💪 Сила корреляции: {strength} (|r| = {abs_r:.3f})")
+
+    def plot_correlation_detail(self, x_col, y_col, corr, p_value):
+        """Детальная визуализация корреляции"""
+        plt.figure(figsize=(10, 8))
+        
+        scatter = plt.scatter(self.data[x_col], self.data[y_col],
+                            alpha=0.4, s=30,
+                            c=self.data.get('popularity', 50),
+                            cmap='viridis', edgecolors='black', linewidth=0.5)
+        
+        plt.title(f'Корреляция {x_col} и {y_col}\n'
+                 f'r = {corr:.3f}, p = {p_value:.4f}',
+                 fontsize=14, fontweight='bold')
+        plt.xlabel(x_col.capitalize(), fontsize=12)
+        plt.ylabel(y_col.capitalize(), fontsize=12)
+        
+        # Линия регрессии
+        if len(self.data) > 1:
+            z = np.polyfit(self.data[x_col], self.data[y_col], 1)
+            p = np.poly1d(z)
+            plt.plot(self.data[x_col], p(self.data[x_col]),
+                    "r-", alpha=0.8, linewidth=3,
+                    label=f'Линия регрессии: y = {z[0]:.3f}x + {z[1]:.3f}')
+            plt.legend()
+        
+        plt.colorbar(scatter, label='Популярность трека')
+        plt.grid(True, alpha=0.3)
+        
+        # Сохраняем
+        output_path = f'{self.results_dir}/correlation_{x_col}_{y_col}.png'
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"📁 График корреляции сохранен: {output_path}")
+        plt.show()
+    
+    def plot_genre_analysis(self, genres, f_stat, p_value):
+        """Анализ различий между жанрами"""
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        
+        # 1. Boxplot
+        genre_data = [self.data[self.data['genre'] == g]['popularity'] for g in genres]
+        box = axes[0].boxplot(genre_data, labels=genres, patch_artist=True)
+        
+        colors = plt.cm.Set2(np.linspace(0, 1, len(genres)))
+        for patch, color in zip(box['boxes'], colors):
+            patch.set_facecolor(color)
+        
+        axes[0].set_title(f'Популярность по жанрам\nANOVA: F={f_stat:.2f}, p={p_value:.4f}',
+                         fontsize=12, fontweight='bold')
+        axes[0].set_xlabel('Жанр')
+        axes[0].set_ylabel('Популярность')
+        axes[0].tick_params(axis='x', rotation=45)
+        axes[0].grid(True, alpha=0.3)
+        
+        # 2. Bar chart средних значений
+        means = [data.mean() for data in genre_data]
+        bars = axes[1].bar(genres, means, color=colors, edgecolor='black')
+        
+        axes[1].set_title('Средняя популярность по жанрам', fontsize=12, fontweight='bold')
+        axes[1].set_xlabel('Жанр')
+        axes[1].set_ylabel('Средняя популярность')
+        axes[1].tick_params(axis='x', rotation=45)
+        axes[1].grid(True, alpha=0.3, axis='y')
+        
+        # Добавляем значения на столбцы
+        for bar, mean in zip(bars, means):
+            axes[1].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
+                        f'{mean:.1f}', ha='center', va='bottom', fontsize=10)
+        
+        plt.tight_layout()
+        
+        # Сохраняем
+        output_path = f'{self.results_dir}/genre_analysis.png'
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"📁 График анализа жанров сохранен: {output_path}")
+        plt.show()
+    
+    def plot_normality_check(self, data, p_value):
+        """Проверка нормальности распределения"""
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        
+        # 1. QQ-plot
+        stats.probplot(data, dist="norm", plot=axes[0])
+        axes[0].set_title('QQ-plot: Проверка нормальности', fontsize=12)
+        axes[0].grid(True, alpha=0.3)
+        
+        # 2. Гистограмма с нормальной кривой
+        axes[1].hist(data, bins=30, density=True, alpha=0.6,
+                    color='skyblue', edgecolor='black')
+        
+        # Теоретическая нормальная кривая
+        xmin, xmax = axes[1].get_xlim()
+        x = np.linspace(xmin, xmax, 100)
+        p = stats.norm.pdf(x, data.mean(), data.std())
+        axes[1].plot(x, p, 'r-', linewidth=2, label='Теоретическое нормальное')
+        
+        axes[1].set_title(f'Распределение популярности\n(p-value теста: {p_value:.4f})',
+                         fontsize=12)
+        axes[1].set_xlabel('Популярность')
+        axes[1].set_ylabel('Плотность вероятности')
+        axes[1].legend()
+        axes[1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        
+        # Сохраняем
+        output_path = f'{self.results_dir}/normality_check.png'
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"📁 График проверки нормальности сохранен: {output_path}")
+        plt.show()
+    
+    def perform_posthoc_analysis(self, genres):
+        """Post-hoc анализ после ANOVA"""
+        print("\n📊 POST-HOC АНАЛИЗ (попарные сравнения):")
+        
+        try:
+            # Простое сравнение средних
+            genre_means = {}
+            for genre in genres:
+                genre_data = self.data[self.data['genre'] == genre]['popularity']
+                genre_means[genre] = {
+                    'mean': genre_data.mean(),
+                    'std': genre_data.std(),
+                    'count': len(genre_data)
+                }
+            
+            # Выводим сравнение
+            print("Средние значения по жанрам:")
+            for genre, stats_dict in sorted(genre_means.items(), 
+                                          key=lambda x: x[1]['mean'], reverse=True):
+                print(f"  • {genre}: {stats_dict['mean']:.2f} ± {stats_dict['std']:.2f} "
+                      f"(n={stats_dict['count']})")
+        
+        except Exception as e:
+            print(f"⚠️ Ошибка при post-hoc анализе: {e}")
